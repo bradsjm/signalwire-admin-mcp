@@ -18,6 +18,7 @@ import {
   signalwireDeployCallFlowVersion,
   signalwireDeploySwmlScript,
   signalwireConnectWebhook,
+  signalwireConnectRelayApplication,
   signalwireProvisionTestNumber,
 } from "../src/tools/deployment.js";
 import { signalwireAddKnowledge, signalwireSearchKnowledge } from "../src/tools/knowledge.js";
@@ -286,6 +287,55 @@ describe("connect_webhook compositions", () => {
     const { ctx } = fakeCtx();
     const r = await signalwireConnectWebhook(ctx, { webhook_type: "swml", phone_number_id: "pn-1", url: "https://e.com/s" });
     expect(r.structuredContent.status).toBe("confirmation_required");
+  });
+});
+describe("connect_relay_application compositions", () => {
+  it("blocks when writes disabled", async () => {
+    const { ctx } = fakeCtx(false);
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls" });
+    expect(r.structuredContent.status).toBe("blocked");
+  });
+  it("requires route confirmation before binding", async () => {
+    const { ctx, client } = fakeCtx();
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls", phone_number_id: "pn-1" });
+    expect(r.structuredContent.status).toBe("confirmation_required");
+    expect(client.fabric.relayApplications.create).not.toHaveBeenCalled();
+  });
+  it("creates application when name not found", async () => {
+    const { ctx, client } = fakeCtx();
+    client.fabric.relayApplications.list.mockResolvedValueOnce({ data: [] });
+    client.fabric.relayApplications.create.mockResolvedValueOnce({ id: "ra-1" });
+    client.fabric.relayApplications.get.mockResolvedValueOnce({ id: "ra-1", name: "App" });
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls" });
+    expect(client.fabric.relayApplications.create).toHaveBeenCalledWith({ name: "App", topic: "calls" });
+    expect(r.structuredContent.status).toBe("complete");
+  });
+  it("updates existing application resolved by name and binds number after confirmation", async () => {
+    const { ctx, client } = fakeCtx();
+    client.fabric.relayApplications.list.mockResolvedValueOnce({ data: [{ id: "ra-1", name: "App" }] });
+    client.fabric.relayApplications.get.mockResolvedValueOnce({ id: "ra-1", name: "App" });
+    client.phoneNumbers.get.mockResolvedValueOnce({ id: "pn-1" });
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls", phone_number_id: "pn-1", confirm_route_change: true });
+    expect(client.fabric.relayApplications.update).toHaveBeenCalledWith("ra-1", { name: "App", topic: "calls" });
+    expect(client.phoneNumbers.setRelayApplication).toHaveBeenCalledWith("pn-1", "App");
+    expect(r.structuredContent.status).toBe("complete");
+  });
+  it("returns ambiguity error for duplicate names", async () => {
+    const { ctx, client } = fakeCtx();
+    client.fabric.relayApplications.list.mockResolvedValueOnce({ data: [{ id: "a1", name: "App" }, { id: "a2", name: "App" }] });
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls" });
+    expect(r.structuredContent.status).toBe("error");
+    expect(r.isError).toBe(true);
+  });
+  it("reports partial when binding fails after config", async () => {
+    const { ctx, client } = fakeCtx();
+    client.fabric.relayApplications.list.mockResolvedValueOnce({ data: [{ id: "ra-1", name: "App" }] });
+    client.fabric.relayApplications.get.mockResolvedValueOnce({ id: "ra-1", name: "App" });
+    client.phoneNumbers.setRelayApplication.mockRejectedValueOnce(new Error("boom"));
+    const r = await signalwireConnectRelayApplication(ctx, { application_name: "App", topic: "calls", phone_number_id: "pn-1", confirm_route_change: true });
+    expect(r.structuredContent.status).toBe("partial");
+    expect(r.structuredContent.operations?.some((o) => o.status === "failed")).toBe(true);
+    expect(r.structuredContent.safe_to_retry).toBe(true);
   });
 });
 
