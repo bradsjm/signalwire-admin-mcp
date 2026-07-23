@@ -38,7 +38,7 @@ Answer, play, prompt, branch, connect, transfer, record, and start AI on a call:
 }
 ```
 
-SignalWire fetches a Calling document from an external URL with a POST containing `call`, `params`, `vars`, and `envs`. The server must return `application/json`, `application/yaml`, or `text/x-yaml`. Each call leg owns its `call` object; connecting to a new leg reinitializes it. Read the [Calling SWML overview](https://signalwire.com/docs/swml/reference/calling).
+SignalWire fetches a Calling document from an external URL with a POST containing a `call` object and context scopes such as `params`, `vars`, and `envs`. Treat the context scopes as fetch-dependent objects rather than mandatory keys: the current docs describe `params: {}` and no `vars` on an initial inbound fetch, while a verified initial outbound REST-dial fetch carried `vars: {}` and `envs` but omitted `params`. In that outbound fetch, REST `custom_variables` appeared under `envs`. Require only the fields the application uses, validate any present scope as an object, and preserve additive fields. The server must return `application/json`, `application/yaml`, or `text/x-yaml`. Each call leg owns its `call` object; connecting to a new leg reinitializes it. Read the [Calling SWML overview](https://signalwire.com/docs/swml/reference/calling).
 
 ### Messaging SWML
 
@@ -85,7 +85,7 @@ Use the correct syntax and scope for each flavor:
 
 | Flavor | Runtime scopes | Substitution | JavaScript expressions |
 | --- | --- | --- | --- |
-| Calling | `call`, `params`, `vars`, `envs` | `${path}` or `%{path}` | Calling supports `${...}` expressions |
+| Calling | `call`; context-dependent `params`, `vars`, `envs` | `${path}` or `%{path}` | Calling supports `${...}` expressions |
 | Messaging | `message`, `params`, `vars` | `%{path}` | Messaging does not support JavaScript expressions |
 
 Reference fields with explicit scope, for example `${call.from}`, `%{message.body}`, `${vars.customer_tier}`, or `%{vars.request_response.status}`. Use dot and bracket access only when the relevant scope exists, such as `%{message.media[0].url}` in Messaging; do not assume a field exists on every call or message. Calling unprefixed names search `vars` and then `envs`; use explicit prefixes to avoid collisions.

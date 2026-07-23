@@ -228,8 +228,9 @@ Use the official [FusionPBX integration guide](https://signalwire.com/docs/platf
 1. Freeze one failing scenario: direction, source, destination, resource, transport, time in UTC, and whether the failure is setup, answer, teardown, or media.
 2. Record the Dashboard Logs entry. Use the Voice Logs API with Basic Auth: `GET $SPACE_HOST/api/voice/logs`, then `GET $SPACE_HOST/api/voice/logs/{id}` and `GET $SPACE_HOST/api/voice/logs/{id}/events` for the selected call. See [List Voice Logs](https://signalwire.com/docs/apis/rest/voice-logs/list-voice-logs.md), [Get Voice Log](https://signalwire.com/docs/apis/rest/voice-logs/get-voice-log.md), and [List Voice Log Events](https://signalwire.com/docs/apis/rest/voice-logs/list-voice-log-events.md).
 3. Filter for the SIP log type `relay_sip_call` where present. Preserve the log ID, direction, `from`, `to`, status, duration, and event timestamps. Expect statuses such as `queued`, `ringing`, `in-progress`, `answered`, `busy`, `failed`, `no-answer`, `completed`, and `ended`; use the current endpoint enum as authoritative.
-4. Compare the event stream's level/name/details with the resource configuration snapshot. Never treat a missing Dashboard entry as proof that no SIP packet reached the PBX.
-5. For SWML, collect `connect` status callbacks. For REFER, collect `sip_refer_result`, `sip_refer_response_code`, and `sip_refer_to_response_code` from the [SWML SIP REFER variables](https://signalwire.com/docs/swml/reference/calling/sip-refer.md).
+4. For native REST `dial`, record the submitted `params.codecs`. The current API accepts an array or comma-separated string; a `codecs=...` value embedded in the destination SIP URI takes precedence. Keep `VP8` and `H264` out of an audio-only offer rather than inferring media type from billing labels or the endpoint UI.
+5. Compare the event stream's level/name/details with the resource configuration snapshot. Never treat a missing Dashboard entry as proof that no SIP packet reached the PBX.
+6. For SWML, collect `connect` status callbacks. For REFER, collect `sip_refer_result`, `sip_refer_response_code`, and `sip_refer_to_response_code` from the [SWML SIP REFER variables](https://signalwire.com/docs/swml/reference/calling/sip-refer.md).
 
 ### Follow a packet-capture ladder
 
@@ -241,7 +242,8 @@ Climb only as far as the evidence requires:
 4. **Media layer:** derive the capture filter from the negotiated SDP addresses and ports in that call. SignalWire does not publish a universal RTP port range; do not invent one. Capture only the observed media flow and retain the SDP offer/answer with credentials redacted.
 5. **Endpoint layer:** compare `Via`, `Contact`, `Record-Route`, source/destination addresses, response codes, SDP addresses, codec payloads, SRTP attributes, and authentication challenges. Check both directions.
 6. **FreeSWITCH-only layer:** if the PBX is FreeSWITCH, inspect `hangup_cause`, `sip_term_status`, and `proto_specific_hangup_cause`; use `sofia status gateway <name>` and scoped `sofia ... siptrace on` only during the approved test. Turn tracing off after capture. Follow [FreeSWITCH Call-Setup Failures](https://developer.signalwire.com/freeswitch/troubleshooting/call-setup/) for the documented mappings.
-7. Redact `Authorization`, SIP digest responses, passwords, API tokens, private IPs where policy requires, and unrelated calls before sharing a capture. Preserve packet timestamps and the relevant transaction/dialog.
+7. **FreeSWITCH live-channel layer:** during the approved call, use `fs_cli -x 'show channels'` to obtain the local UUID, then `fs_cli -x 'uuid_dump <uuid>'`. Compare `Channel-Read-Codec-Name`/`Channel-Write-Codec-Name`, `variable_rtp_use_codec_name`, `variable_dtmf_type`, `variable_video_possible`, `variable_video_media_flow`, `variable_video_read_codec`, and `variable_is_video_call`. In one verified SIP call, PCMU audio and VP8 video were both negotiated even though the provider charge details named only `SIP Audio`; charge classification was therefore not proof of an audio-only SDP.
+8. Redact `Authorization`, SIP digest responses, passwords, API tokens, SRTP key material, private IPs where policy requires, and unrelated calls before sharing a capture or `uuid_dump`. Preserve packet timestamps and the relevant transaction/dialog.
 
 ## Interpret SIP responses and Q.850 causes
 

@@ -121,6 +121,8 @@ Capture the exact response SignalWire receives:
 
 For SWML, parse the response as JSON/YAML and verify `version: "1.0.0"`, `sections.main`, and flavor-specific methods. Return `application/json`, `application/yaml`, or `text/x-yaml`. Do not serve an HTML error page with status `200`.
 
+Treat native Calling document-request bodies as additive and fetch-dependent. A verified initial outbound REST-dial fetch contained `call`, `vars: {}`, and `envs`, omitted `params`, and added fields including `from_number`, `to_number`, and `dial_winner` under `call`. REST `custom_variables` surfaced under `envs`. Do not reject a valid initial fetch merely because a context scope documented for another fetch mode is absent. In the same test, returning `400` prevented SWML execution and the answered call ended without playing media; correlate the fetch response with the call ID before diagnosing audio.
+
 For cXML, require well-formed XML rooted at `<Response>` and the correct XML content type. Escape dynamic values. Return `<Response/>` for an intentionally empty valid response.
 
 ### Use the documented compatibility error codes
@@ -144,6 +146,8 @@ Do not apply these cXML codes to a native REST validation failure unless the log
 - Trust forwarded host/protocol headers only from configured proxies.
 - Use the project's signing key, not the API token.
 - Reject invalid signatures before business logic.
+- For native JSON/SWML Scheme A, verify the 40-hex `x-signalwire-signature` as `hex(HMAC-SHA1(projectSigningKey, exactExternalUrl + rawUtf8Body))`. A live Calling callback confirmed that changing the URL or body invalidates the signature; never substitute the API token or a reconstructed JSON serialization.
+- A verified native Calling SWML fetch carried both `x-signalwire-signature` and `x-signalwire-sha256-signature`. Only the 40-hex Scheme A header was independently validated in that test. Use the current official SDK helper or algorithm documentation before selecting the SHA-256 header; do not assume the two headers are interchangeable.
 - Diagnose tunnel URL rewriting; do not disable validation in production.
 
 See [Webhook security](https://signalwire.com/docs/compatibility-api/guides/webhook-security.md) and [Python webhook validation](https://signalwire.com/docs/server-sdks/reference/python/core/security.md).
@@ -213,7 +217,12 @@ Use the call segment/log ID as the primary correlation key:
 5. Identify the first state transition that did not occur: created, queued, initiated, ringing, answered/in-progress, completed/ended.
 6. On busy/no-answer/failed, preserve the downstream status/cause and rejecting hop.
 7. On audio problems, prove media attachment/SDP/RTP direction before changing codecs, encryption, or firewall rules.
-8. On machine detection, transcription, recording, or streaming problems, inspect the specific callback and method page instead of only the final call status.
+8. For SIP media classification, inspect the SDP or endpoint channel state rather than relying on the call UI or charge description. On FreeSWITCH, `show channels` plus `uuid_dump <uuid>` can distinguish an audio codec from a simultaneously negotiated video codec; redact SRTP key material from the dump.
+9. On machine detection, transcription, recording, or streaming problems, inspect the specific callback and method page instead of only the final call status.
+
+Native `calling.call.state` callbacks are additive JSON contracts. A verified terminal callback carried `event_type`, `event_channel`, `timestamp`, `project_id`, and `space_id` at the top level, with `call_id`, `node_id`, `segment_id`, `call_state`, `direction`, and `device` under `params`. Its terminal fields included `end_reason`, `end_source`, `dial_winner`, `start_time`, `answer_time`, `end_time`, and `audio_in_mos`. Treat terminal fields and media metrics as optional, preserve unknown fields, and do not coerce provider values: the observed `dial_winner` was the string `"true"`, the event timestamp was fractional epoch seconds, and call times were epoch milliseconds.
+
+Native call-command responses are snapshots, not completion receipts. A successful Play or Collect request can return a call object whose `status` is already `ended` when the call terminated before the command took effect. Correlate an active state with the operation callback/event or direct media evidence before declaring the action successful.
 
 Read [Voice logs](https://signalwire.com/docs/apis/rest/voice-logs/list-voice-logs.md), [Voice log events](https://signalwire.com/docs/apis/rest/voice-logs/list-voice-log-events.md), [Call commands](https://signalwire.com/docs/apis/rest/calls/call-commands.md), and the specific SWML method/callback page.
 

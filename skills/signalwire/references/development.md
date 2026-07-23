@@ -93,7 +93,7 @@ Messaging SWML supports `%{path}` substitution, not Calling SWML JavaScript expr
 
 ### 3. Serve SWML from your own webhook
 
-Move to a self-hosted endpoint when you need source control, tests, an internal service, or runtime decisions. SignalWire sends a POST for a Calling document with `call`, `params`, `vars`, and `envs`; it sends a Messaging document with `message`, `params`, and `vars`. Return `application/json`, `application/yaml`, or `text/x-yaml` containing valid SWML.
+Move to a self-hosted endpoint when you need source control, tests, an internal service, or runtime decisions. SignalWire sends a Calling-document POST with `call` plus context-dependent `params`, `vars`, and `envs`; validate scopes when present instead of requiring every key on every fetch. It sends a Messaging document with `message`, `params`, and `vars`. Return `application/json`, `application/yaml`, or `text/x-yaml` containing valid SWML.
 
 Use a small ESM Node endpoint for a deterministic voice response:
 
