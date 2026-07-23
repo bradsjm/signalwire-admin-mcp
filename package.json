@@ -1,8 +1,10 @@
 {
   "name": "@bradsjm/signalwire-admin-mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@11.16.0",
   "engines": {
     "node": ">=20.19.0"
@@ -25,7 +27,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "@signalwire/sdk": "2.0.5",
-    "@bradsjm/signalwire-admin-mcp": "link:",
     "zod": "4.4.3"
   },
   "devDependencies": {
