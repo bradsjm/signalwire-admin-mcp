@@ -69,21 +69,12 @@ Point any stdio MCP client (Claude Desktop, Cursor, etc.) at the server. The ser
 configured entirely through environment variables, so the two methods below differ only
 in `command`/`args`.
 
-### Global install (recommended)
-
-Install once with pnpm to put the `signalwire-admin-mcp` command on your `PATH`:
-
-```bash
-pnpm add -g @bradsjm/signalwire-admin-mcp
-```
-
-Then reference the command by name — no `args` needed:
-
 ```jsonc
 {
   "mcpServers": {
     "signalwire-admin-mcp": {
-      "command": "signalwire-admin-mcp",
+      "command": "npx",
+      "args": ["-y", "@bradsjm/signalwire-admin-mcp@latest"],
       "env": {
         "SIGNALWIRE_SPACE": "example.signalwire.com",
         "SIGNALWIRE_PROJECT_ID": "00000000-0000-0000-0000-000000000000",
