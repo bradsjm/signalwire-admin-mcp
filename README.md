@@ -201,4 +201,4 @@ tests/
 
 ## License
 
-Private package (`@bradsjm/signalwire-admin-mcp` v0.1.0).
+MIT License. See [LICENSE](LICENSE).

@@ -1,6 +1,15 @@
 {
   "name": "@bradsjm/signalwire-admin-mcp",
   "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "Jonathan Bradshaw",
+    "email": "jb@nrgup.net"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bradsjm/signalwire-admin-mcp.git"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"
