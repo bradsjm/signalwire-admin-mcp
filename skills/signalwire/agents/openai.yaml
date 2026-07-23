@@ -1,0 +1,4 @@
+interface:
+  display_name: "SignalWire Developer"
+  short_description: "Build and troubleshoot SignalWire solutions"
+  default_prompt: "Use $signalwire to design, implement, and troubleshoot a SignalWire communications solution."
